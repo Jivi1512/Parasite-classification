@@ -4,20 +4,32 @@ from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
+import gdown
 import os
 import glob
-import gdown
 
-MODEL_PATH="alexnet_model.keras"
+MODEL_PATH="alexnet_model.h5"
 GDRIVE_FILE_ID="18oavgh0KejnFJWkyhSbGk1h7_OTRi9Kv"
 
-if not os.path.exists(MODEL_PATH):
-    gdown.download(f"https://drive.google.com/file/d/18oavgh0KejnFJWkyhSbGk1h7_OTRi9Kv/view?usp=sharing", MODEL_PATH, quiet=False)
+if not os.path.exists(MODEL_PATH) or os.path.getsize(MODEL_PATH) < 1000000:
+    if os.path.exists(MODEL_PATH):
+        os.remove(MODEL_PATH)
+    gdown.download(id=GDRIVE_FILE_ID, output=MODEL_PATH, quiet=False, fuzzy=True)
 
 @st.cache_resource
 def load_alexnet():
     model=load_model(MODEL_PATH)
     return model
+```
+
+Two key fixes made:
+
+- **`gdown.download(id=...)`** — passes the file ID directly instead of the full sharing URL, bypassing the HTML warning page gdown was receiving
+- **`os.path.getsize(MODEL_PATH) < 1000000`** — checks if a previously downloaded file is less than 1MB (corrupt/HTML), deletes it and re-downloads
+
+Also make sure on Google Drive the file is shared as **Anyone with the link → Viewer**, then go to Drive → right click file → **Get link** → confirm it says "Anyone with the link". Large files sometimes trigger a virus scan warning page which also breaks gdown — if it still fails, open this URL in browser first to accept the warning:
+```
+https://drive.google.com/uc?id=18oavgh0KejnFJWkyhSbGk1h7_OTRi9Kv&export=download
 st.set_page_config(page_title="Parasite Classifier", page_icon="", layout="wide")
 
 st.markdown("""
@@ -262,3 +274,4 @@ with col_results:
             </div>
 
         ''', unsafe_allow_html=True)
+
