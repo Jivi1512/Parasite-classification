@@ -34,7 +34,7 @@ def build_alexnet(num_classes):
         MaxPooling2D((3,3), strides=(2,2)),
         Conv2D(384, (3,3), padding='same', activation='relu'),
         BatchNormalization(),
-        Conv2D(384, (3,3), padding='same', activation='relu'),ou
+        Conv2D(384, (3,3), padding='same', activation='relu'),
         BatchNormalization(),
         Conv2D(256, (3,3), padding='same', activation='relu'),
         BatchNormalization(),
@@ -498,4 +498,5 @@ with col_right:
             <div style="margin-top:0.5rem; font-family:'Space Mono',monospace; font-size:0.55rem; color:#0f1a1a; letter-spacing:0.15em;">Upload an image and run classification</div>
         </div>
         """, unsafe_allow_html=True)
+
 
