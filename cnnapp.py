@@ -10,7 +10,7 @@ import zipfile
 import json
 import shutil
 
-MODEL_PATH="alexnet_model.keras"
+MODEL_PATH="alexnet_best.keras"
 PATCHED_PATH="alexnet_model_patched.keras"
 
 CLASS_NAMES=[
@@ -161,3 +161,4 @@ with col_results:
 
     elif not uploaded_file:
         st.markdown('<div class="card" style="text-align:center; color:#475569; padding:4rem 1rem; margin-top:1rem;">Results will appear here after classification</div>', unsafe_allow_html=True)
+
