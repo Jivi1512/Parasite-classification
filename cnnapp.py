@@ -3,12 +3,15 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
-from tensorflow.keras.layers import InputLayer
 from tensorflow.keras.preprocessing.image import img_to_array
 import os
 import glob
+import zipfile
+import json
+import shutil
 
 MODEL_PATH="alexnet_model.keras"
+PATCHED_PATH="alexnet_model_patched.keras"
 
 CLASS_NAMES=[
     "Babesia_1173", "Leishmania_2701", "Leukocyte_1000X_461",
@@ -20,22 +23,45 @@ CLASS_NAMES=[
 IMG_SIZE=(224, 224)
 DATASET_PATH="Parasite Dataset"
 
-class CompatibleInputLayer(InputLayer):
-    def __init__(self, **kwargs):
-        if "batch_shape" in kwargs:
-            kwargs["batch_input_shape"]=kwargs.pop("batch_shape")
-        super().__init__(**kwargs)
+def fix_batch_shape(obj):
+    if isinstance(obj, dict):
+        if "batch_shape" in obj:
+            obj["batch_input_shape"]=obj.pop("batch_shape")
+        return {k: fix_batch_shape(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [fix_batch_shape(i) for i in obj]
+    return obj
 
-    @classmethod
-    def from_config(cls, config):
-        if "batch_shape" in config:
-            config["batch_input_shape"]=config.pop("batch_shape")
-        return cls(**config)
+def patch_keras_file(src, dst):
+    if os.path.exists(dst):
+        return
+    shutil.copy2(src, dst)
+    with zipfile.ZipFile(src, 'r') as zin:
+        names=zin.namelist()
+        contents={}
+        for name in names:
+            contents[name]=zin.read(name)
+    config_key=None
+    for name in names:
+        if name.endswith("config.json"):
+            config_key=name
+            break
+    if config_key is None:
+        return
+    config_data=json.loads(contents[config_key].decode("utf-8"))
+    config_data=fix_batch_shape(config_data)
+    patched_bytes=json.dumps(config_data).encode("utf-8")
+    with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
+        for name in names:
+            if name==config_key:
+                zout.writestr(name, patched_bytes)
+            else:
+                zout.writestr(name, contents[name])
 
 @st.cache_resource
 def load_alexnet():
-    custom_objects={"InputLayer": CompatibleInputLayer}
-    model=load_model(MODEL_PATH, custom_objects=custom_objects)
+    patch_keras_file(MODEL_PATH, PATCHED_PATH)
+    model=load_model(PATCHED_PATH)
     return model
 
 @st.cache_data
