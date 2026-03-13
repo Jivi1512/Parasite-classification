@@ -4,17 +4,50 @@ from PIL import Image
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
-import gdown
+import requests
 import os
 import glob
 
-MODEL_PATH="alexnet_model.h5"
+MODEL_PATH="alexnet_model.keras"
 GDRIVE_FILE_ID="18oavgh0KejnFJWkyhSbGk1h7_OTRi9Kv"
 
-if not os.path.exists(MODEL_PATH) or os.path.getsize(MODEL_PATH) < 1000000:
+def is_valid_keras(path):
+    try:
+        with open(path, "rb") as f:
+            sig=f.read(4)
+        return sig==b'PK\x03\x04'
+    except:
+        return False
+
+def download_gdrive_large(file_id, dest):
+    session=requests.Session()
+    url="https://docs.google.com/uc?export=download"
+    response=session.get(url, params={"id": file_id}, stream=True)
+    token=None
+    for key, value in response.cookies.items():
+        if key.startswith("download_warning"):
+            token=value
+            break
+    if token:
+        response=session.get(url, params={"id": file_id, "confirm": token}, stream=True)
+    else:
+        response=session.get(
+            "https://drive.usercontent.google.com/download",
+            params={"id": file_id, "export": "download", "confirm": "t"},
+            stream=True
+        )
+    with open(dest, "wb") as f:
+        for chunk in response.iter_content(chunk_size=32768):
+            if chunk:
+                f.write(chunk)
+
+if not os.path.exists(MODEL_PATH) or not is_valid_keras(MODEL_PATH):
     if os.path.exists(MODEL_PATH):
         os.remove(MODEL_PATH)
-    gdown.download(id=GDRIVE_FILE_ID, output=MODEL_PATH, quiet=False, fuzzy=True)
+    download_gdrive_large(GDRIVE_FILE_ID, MODEL_PATH)
+    if not is_valid_keras(MODEL_PATH):
+        st.error("Model download failed: file is not a valid .keras archive. Check Drive sharing settings.")
+        st.stop()
 
 CLASS_NAMES=[
     "Babesia_1173", "Leishmania_2701", "Leukocyte_1000X_461",
