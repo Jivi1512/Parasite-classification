@@ -6,7 +6,18 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 import os
 import glob
+import gdown
 
+MODEL_PATH="alexnet_model.keras"
+GDRIVE_FILE_ID="18oavgh0KejnFJWkyhSbGk1h7_OTRi9Kv"
+
+if not os.path.exists(MODEL_PATH):
+    gdown.download(f"https://drive.google.com/file/d/18oavgh0KejnFJWkyhSbGk1h7_OTRi9Kv/view?usp=sharing", MODEL_PATH, quiet=False)
+
+@st.cache_resource
+def load_alexnet():
+    model=load_model(MODEL_PATH)
+    return model
 st.set_page_config(page_title="Parasite Classifier", page_icon="", layout="wide")
 
 st.markdown("""
@@ -163,11 +174,6 @@ CLASS_NAMES=[
 IMG_SIZE=(224, 224)
 DATASET_PATH="Parasite Dataset"
 
-@st.cache_resource
-def load_alexnet():
-    model=load_model("alexnet_model.keras")
-    return model
-
 @st.cache_data
 def load_reference_images():
     reference={}
@@ -254,4 +260,5 @@ with col_results:
             <div class="card" style="text-align:center; color:#475569; padding:4rem 1rem; margin-top:1rem;">
                 Results will appear here after classification
             </div>
+
         ''', unsafe_allow_html=True)
