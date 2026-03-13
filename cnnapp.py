@@ -34,7 +34,7 @@ def build_alexnet(num_classes):
         MaxPooling2D((3,3), strides=(2,2)),
         Conv2D(384, (3,3), padding='same', activation='relu'),
         BatchNormalization(),
-        Conv2D(384, (3,3), padding='same', activation='relu'),
+        Conv2D(384, (3,3), padding='same', activation='relu'),ou
         BatchNormalization(),
         Conv2D(256, (3,3), padding='same', activation='relu'),
         BatchNormalization(),
@@ -146,7 +146,7 @@ st.markdown("""
         font-family: 'Space Mono', monospace;
         font-size: 0.7rem;
         letter-spacing: 0.3em;
-        color: #00ffc8;
+        color: #39ff14;
         text-transform: uppercase;
         margin-bottom: 0.6rem;
         opacity: 0.8;
@@ -157,7 +157,7 @@ st.markdown("""
         font-weight: 800;
         font-size: 3.2rem;
         line-height: 1.1;
-        background: linear-gradient(90deg, #00ffc8 0%, #00aaff 50%, #a855f7 100%);
+        background: linear-gradient(90deg, #39ff14 0%, #00ff41 60%, #ccff00 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -174,7 +174,7 @@ st.markdown("""
 
     .divider-line {
         height: 1px;
-        background: linear-gradient(90deg, transparent, #00ffc822, #00aaff44, #00ffc822, transparent);
+        background: linear-gradient(90deg, transparent, #39ff1422, #00aaff44, #39ff1422, transparent);
         margin: 1.5rem 0 2rem 0;
         border: none;
     }
@@ -194,14 +194,14 @@ st.markdown("""
         position: absolute;
         top: 0; left: 0; right: 0;
         height: 1px;
-        background: linear-gradient(90deg, transparent, #00ffc833, transparent);
+        background: linear-gradient(90deg, transparent, #39ff1433, transparent);
     }
 
     .panel-label {
         font-family: 'Space Mono', monospace;
         font-size: 0.6rem;
         letter-spacing: 0.25em;
-        color: #00ffc8;
+        color: #39ff14;
         text-transform: uppercase;
         margin-bottom: 1rem;
         opacity: 0.7;
@@ -211,7 +211,7 @@ st.markdown("""
         font-family: 'Syne', sans-serif;
         font-weight: 800;
         font-size: 1.6rem;
-        background: linear-gradient(135deg, #00ffc8, #00aaff);
+        background: linear-gradient(135deg, #39ff14, #00aaff);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
@@ -223,7 +223,7 @@ st.markdown("""
         font-family: 'Space Mono', monospace;
         font-size: 3rem;
         font-weight: 700;
-        color: #00ffc8;
+        color: #39ff14;
         line-height: 1;
         margin-bottom: 0.2rem;
     }
@@ -248,8 +248,8 @@ st.markdown("""
 
     .bar-fill {
         height: 100%;
-        background: linear-gradient(90deg, #00ffc8, #00aaff);
-        box-shadow: 0 0 8px #00ffc855;
+        background: linear-gradient(90deg, #39ff14, #00aaff);
+        box-shadow: 0 0 8px #39ff1455;
     }
 
     .rank-row {
@@ -267,7 +267,7 @@ st.markdown("""
     .rank-num {
         font-family: 'Space Mono', monospace;
         font-size: 0.6rem;
-        color: #1e3a3a;
+        color: #1a2e0a;
         width: 1.2rem;
         text-align: center;
         flex-shrink: 0;
@@ -288,7 +288,7 @@ st.markdown("""
     .rank-pct {
         font-family: 'Space Mono', monospace;
         font-size: 0.75rem;
-        color: #00ffc8;
+        color: #39ff14;
         flex-shrink: 0;
     }
 
@@ -301,7 +301,7 @@ st.markdown("""
 
     .rank-bar-inner {
         height: 100%;
-        background: linear-gradient(90deg, #00ffc8, #00aaff);
+        background: linear-gradient(90deg, #39ff14, #00aaff);
     }
 
     .upload-zone {
@@ -316,7 +316,7 @@ st.markdown("""
     .upload-hint {
         font-family: 'Space Mono', monospace;
         font-size: 0.65rem;
-        color: #1e3a3a;
+        color: #1a2e0a;
         letter-spacing: 0.15em;
         text-transform: uppercase;
         margin-top: 0.5rem;
@@ -326,7 +326,7 @@ st.markdown("""
         font-family: 'Space Mono', monospace;
         font-size: 0.6rem;
         letter-spacing: 0.2em;
-        color: #1e3a3a;
+        color: #1a2e0a;
         text-transform: uppercase;
         text-align: center;
         margin-top: 0.6rem;
@@ -368,8 +368,8 @@ st.markdown("""
 
     .stButton > button {
         background: transparent;
-        border: 1px solid #00ffc833;
-        color: #00ffc8;
+        border: 1px solid #39ff1433;
+        color: #39ff14;
         font-family: 'Space Mono', monospace;
         font-size: 0.65rem;
         letter-spacing: 0.2em;
@@ -381,25 +381,25 @@ st.markdown("""
     }
 
     .stButton > button:hover {
-        background: #00ffc808;
-        border-color: #00ffc8;
-        box-shadow: 0 0 20px #00ffc811;
+        background: #39ff1408;
+        border-color: #39ff14;
+        box-shadow: 0 0 20px #39ff1411;
     }
 
     .corner-tl {
         position: absolute;
         top: 8px; left: 8px;
         width: 10px; height: 10px;
-        border-top: 1px solid #00ffc833;
-        border-left: 1px solid #00ffc833;
+        border-top: 1px solid #39ff1433;
+        border-left: 1px solid #39ff1433;
     }
 
     .corner-br {
         position: absolute;
         bottom: 8px; right: 8px;
         width: 10px; height: 10px;
-        border-bottom: 1px solid #00ffc833;
-        border-right: 1px solid #00ffc833;
+        border-bottom: 1px solid #39ff1433;
+        border-right: 1px solid #39ff1433;
     }
 
     img { border-radius: 2px !important; }
@@ -498,3 +498,4 @@ with col_right:
             <div style="margin-top:0.5rem; font-family:'Space Mono',monospace; font-size:0.55rem; color:#0f1a1a; letter-spacing:0.15em;">Upload an image and run classification</div>
         </div>
         """, unsafe_allow_html=True)
+
