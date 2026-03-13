@@ -62,13 +62,12 @@ def collect_h5_weights(h5_group, prefix=""):
 def load_weights_from_keras3(model, weight_path):
     with h5py.File(weight_path, 'r') as f:
         all_weights=collect_h5_weights(f)
-    weight_values=[np.array(v) for v in all_weights.values()]
+    weight_values=list(all_weights.values())
     model_weights=model.weights
     if len(weight_values)==len(model_weights):
         for mw, wv in zip(model_weights, weight_values):
             mw.assign(wv)
     else:
-        trainable=[w for w in all_weights.values()]
         idx=0
         for layer in model.layers:
             layer_weights=layer.weights
@@ -76,8 +75,8 @@ def load_weights_from_keras3(model, weight_path):
                 continue
             new_vals=[]
             for w in layer_weights:
-                if idx < len(trainable):
-                    new_vals.append(np.array(list(all_weights.values())[idx]))
+                if idx < len(weight_values):
+                    new_vals.append(weight_values[idx])
                     idx+=1
             if new_vals:
                 try:
@@ -116,82 +115,386 @@ def preprocess(image):
     arr=np.expand_dims(arr, axis=0)
     return arr
 
-st.set_page_config(page_title="Parasite Classifier", layout="wide")
+st.set_page_config(page_title="ParaScan", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    .stApp { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); min-height: 100vh; }
-    .main-title { background: linear-gradient(90deg, #a78bfa, #60a5fa, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 2.8rem; font-weight: 700; text-align: center; margin-bottom: 0.2rem; }
-    .sub-title { color: #94a3b8; text-align: center; font-size: 1rem; font-weight: 300; margin-bottom: 2rem; }
-    .card { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 1.5rem; backdrop-filter: blur(10px); margin-bottom: 1.2rem; }
-    .card-title { color: #a78bfa; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.6rem; }
-    .predicted-label { background: linear-gradient(90deg, #7c3aed, #2563eb); border-radius: 12px; padding: 1rem 1.5rem; color: white; font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 1rem; }
-    .confidence-bar-container { background: rgba(255,255,255,0.08); border-radius: 999px; height: 14px; width: 100%; overflow: hidden; margin-top: 0.4rem; }
-    .confidence-bar-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #7c3aed, #60a5fa, #34d399); }
-    .confidence-value { color: #34d399; font-size: 2rem; font-weight: 700; text-align: center; }
-    .top-k-row { display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.06); color: #cbd5e1; font-size: 0.9rem; }
-    .top-k-label { color: #e2e8f0; }
-    .top-k-pct { color: #60a5fa; font-weight: 600; }
-    .similar-caption { color: #94a3b8; font-size: 0.8rem; text-align: center; margin-top: 0.4rem; }
-    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 1.5rem 0; }
-    section[data-testid="stFileUploadDropzone"] { background: rgba(167,139,250,0.07) !important; border: 2px dashed rgba(167,139,250,0.4) !important; border-radius: 12px !important; }
-    .stButton > button { background: linear-gradient(90deg, #7c3aed, #2563eb); color: white; border: none; border-radius: 10px; padding: 0.6rem 2rem; font-weight: 600; width: 100%; }
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'Syne', sans-serif;
+        background-color: #000000;
+    }
+
+    .stApp {
+        background: #000000;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        max-width: 1200px;
+    }
+
+    .header-wrap {
+        text-align: center;
+        padding: 2.5rem 0 1rem 0;
+        position: relative;
+    }
+
+    .header-tag {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.3em;
+        color: #00ffc8;
+        text-transform: uppercase;
+        margin-bottom: 0.6rem;
+        opacity: 0.8;
+    }
+
+    .header-title {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 3.2rem;
+        line-height: 1.1;
+        background: linear-gradient(90deg, #00ffc8 0%, #00aaff 50%, #a855f7 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    .header-sub {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.75rem;
+        color: #334155;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+    }
+
+    .divider-line {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #00ffc822, #00aaff44, #00ffc822, transparent);
+        margin: 1.5rem 0 2rem 0;
+        border: none;
+    }
+
+    .panel {
+        background: #0a0a0a;
+        border: 1px solid #1a1a1a;
+        border-radius: 2px;
+        padding: 1.6rem;
+        margin-bottom: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .panel::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, #00ffc833, transparent);
+    }
+
+    .panel-label {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.25em;
+        color: #00ffc8;
+        text-transform: uppercase;
+        margin-bottom: 1rem;
+        opacity: 0.7;
+    }
+
+    .result-species {
+        font-family: 'Syne', sans-serif;
+        font-weight: 800;
+        font-size: 1.6rem;
+        background: linear-gradient(135deg, #00ffc8, #00aaff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.3rem;
+        line-height: 1.2;
+    }
+
+    .result-confidence-num {
+        font-family: 'Space Mono', monospace;
+        font-size: 3rem;
+        font-weight: 700;
+        color: #00ffc8;
+        line-height: 1;
+        margin-bottom: 0.2rem;
+    }
+
+    .result-confidence-label {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.2em;
+        color: #334155;
+        text-transform: uppercase;
+    }
+
+    .bar-track {
+        background: #111111;
+        border-radius: 0;
+        height: 3px;
+        width: 100%;
+        margin-top: 1rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #00ffc8, #00aaff);
+        box-shadow: 0 0 8px #00ffc855;
+    }
+
+    .rank-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #0f0f0f;
+    }
+
+    .rank-row:last-child {
+        border-bottom: none;
+    }
+
+    .rank-num {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.6rem;
+        color: #1e3a3a;
+        width: 1.2rem;
+        text-align: center;
+        flex-shrink: 0;
+    }
+
+    .rank-name {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.85rem;
+        color: #94a3b8;
+        flex: 1;
+        font-weight: 600;
+    }
+
+    .rank-name.top {
+        color: #e2e8f0;
+    }
+
+    .rank-pct {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.75rem;
+        color: #00ffc8;
+        flex-shrink: 0;
+    }
+
+    .rank-bar-wrap {
+        width: 80px;
+        background: #111;
+        height: 2px;
+        flex-shrink: 0;
+    }
+
+    .rank-bar-inner {
+        height: 100%;
+        background: linear-gradient(90deg, #00ffc8, #00aaff);
+    }
+
+    .upload-zone {
+        border: 1px dashed #1a2a2a;
+        border-radius: 2px;
+        padding: 2rem;
+        text-align: center;
+        background: #050505;
+        transition: border-color 0.2s;
+    }
+
+    .upload-hint {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.65rem;
+        color: #1e3a3a;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        margin-top: 0.5rem;
+    }
+
+    .ref-label {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 0.2em;
+        color: #1e3a3a;
+        text-transform: uppercase;
+        text-align: center;
+        margin-top: 0.6rem;
+    }
+
+    .idle-box {
+        border: 1px dashed #0f1f1f;
+        border-radius: 2px;
+        padding: 4rem 2rem;
+        text-align: center;
+    }
+
+    .idle-text {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.65rem;
+        color: #1a2a2a;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+    }
+
+    .stFileUploader label { display: none; }
+
+    section[data-testid="stFileUploadDropzone"] {
+        background: #050505 !important;
+        border: 1px dashed #1a2a2a !important;
+        border-radius: 2px !important;
+    }
+
+    section[data-testid="stFileUploadDropzone"] p {
+        color: #1e3a3a !important;
+        font-family: 'Space Mono', monospace !important;
+        font-size: 0.65rem !important;
+        letter-spacing: 0.15em !important;
+    }
+
+    section[data-testid="stFileUploadDropzone"] svg {
+        fill: #1e3a3a !important;
+    }
+
+    .stButton > button {
+        background: transparent;
+        border: 1px solid #00ffc833;
+        color: #00ffc8;
+        font-family: 'Space Mono', monospace;
+        font-size: 0.65rem;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        padding: 0.6rem 1.5rem;
+        width: 100%;
+        border-radius: 2px;
+        transition: all 0.2s;
+    }
+
+    .stButton > button:hover {
+        background: #00ffc808;
+        border-color: #00ffc8;
+        box-shadow: 0 0 20px #00ffc811;
+    }
+
+    .corner-tl {
+        position: absolute;
+        top: 8px; left: 8px;
+        width: 10px; height: 10px;
+        border-top: 1px solid #00ffc833;
+        border-left: 1px solid #00ffc833;
+    }
+
+    .corner-br {
+        position: absolute;
+        bottom: 8px; right: 8px;
+        width: 10px; height: 10px;
+        border-bottom: 1px solid #00ffc833;
+        border-right: 1px solid #00ffc833;
+    }
+
+    img { border-radius: 2px !important; }
+
+    .stImage { border: 1px solid #111; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">Parasite Classifier</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">AlexNet-powered microscopy image classification across 10 parasite classes</div>', unsafe_allow_html=True)
-st.markdown('<hr class="divider">', unsafe_allow_html=True)
+st.markdown("""
+<div class="header-wrap">
+    <div class="header-tag">Microscopy Diagnostics System v1.0</div>
+    <div class="header-title">ParaScan</div>
+    <div class="header-sub">AlexNet Neural Classifier &nbsp;|&nbsp; 10 Parasite Classes</div>
+</div>
+<hr class="divider-line">
+""", unsafe_allow_html=True)
 
 model=load_alexnet()
 reference_images=load_reference_images()
 
-col_upload, col_results=st.columns([1, 1.6], gap="large")
+col_left, col_right=st.columns([1, 1.4], gap="large")
 
-with col_upload:
-    st.markdown('<div class="card-title">Upload Microscopy Image</div>', unsafe_allow_html=True)
+with col_left:
+    st.markdown('<div class="panel"><div class="corner-tl"></div><div class="corner-br"></div><div class="panel-label">Input &mdash; Microscopy Image</div>', unsafe_allow_html=True)
     uploaded_file=st.file_uploader("", type=["jpg", "jpeg", "png"])
     if uploaded_file:
         image=Image.open(uploaded_file)
-        st.image(image, caption="Uploaded Image", use_column_width=True)
-        run_btn=st.button("Classify Image")
+        st.image(image, use_column_width=True)
     else:
-        st.markdown('<div class="card" style="text-align:center; color:#64748b; padding:3rem 1rem;">Upload an image to begin classification</div>', unsafe_allow_html=True)
+        st.markdown('<div class="upload-hint">Drop a slide image to begin analysis</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    if uploaded_file:
+        run_btn=st.button("Run Classification")
+    else:
         run_btn=False
 
-with col_results:
+    if uploaded_file and reference_images:
+        processed=preprocess(image)
+        preds_preview=model.predict(processed, verbose=0)[0]
+        top_ref_idx=int(np.argmax(preds_preview))
+        top_ref_label=CLASS_NAMES[top_ref_idx]
+        if top_ref_label in reference_images:
+            st.markdown('<div class="panel" style="margin-top:1rem;"><div class="corner-tl"></div><div class="corner-br"></div><div class="panel-label">Reference Sample</div>', unsafe_allow_html=True)
+            ref_img=Image.open(reference_images[top_ref_label])
+            st.image(ref_img, use_column_width=True)
+            st.markdown(f'<div class="ref-label">{top_ref_label.replace("_", " ")}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+with col_right:
     if uploaded_file and run_btn:
         processed=preprocess(image)
-        preds=model.predict(processed)[0]
+        preds=model.predict(processed, verbose=0)[0]
         top_idx=int(np.argmax(preds))
         top_label=CLASS_NAMES[top_idx]
         confidence=float(preds[top_idx])*100
+        top3_idx=np.argsort(preds)[::-1][:3]
 
-        st.markdown(f'<div class="predicted-label">{top_label.replace("_", " ")}</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="panel" style="margin-bottom:1rem;">
+            <div class="corner-tl"></div><div class="corner-br"></div>
+            <div class="panel-label">Primary Detection</div>
+            <div class="result-species">{top_label.replace("_", " ")}</div>
+            <div style="margin-top:1.2rem;">
+                <div class="result-confidence-num">{confidence:.1f}<span style="font-size:1.2rem; color:#1e3a3a;">%</span></div>
+                <div class="result-confidence-label">Confidence Score</div>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill" style="width:{confidence}%;"></div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">Confidence Score</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="confidence-value">{confidence:.2f}%</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="confidence-bar-container"><div class="confidence-bar-fill" style="width:{confidence}%"></div></div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="panel"><div class="corner-tl"></div><div class="corner-br"></div><div class="panel-label">Top 3 Candidates</div>', unsafe_allow_html=True)
 
-        top5_idx=np.argsort(preds)[::-1][:5]
-        st.markdown('<div class="card">', unsafe_allow_html=True)
-        st.markdown('<div class="card-title">Top 5 Predictions</div>', unsafe_allow_html=True)
-        for i in top5_idx:
+        for rank, i in enumerate(top3_idx):
             pct=float(preds[i])*100
-            st.markdown(f'<div class="top-k-row"><span class="top-k-label">{CLASS_NAMES[i].replace("_", " ")}</span><span class="top-k-pct">{pct:.2f}%</span></div>', unsafe_allow_html=True)
+            name_clean=CLASS_NAMES[i].replace("_", " ")
+            bar_w=int(pct)
+            is_top="top" if rank==0 else ""
+            st.markdown(f"""
+            <div class="rank-row">
+                <div class="rank-num">0{rank+1}</div>
+                <div class="rank-name {is_top}">{name_clean}</div>
+                <div class="rank-bar-wrap"><div class="rank-bar-inner" style="width:{bar_w}%;"></div></div>
+                <div class="rank-pct">{pct:.1f}%</div>
+            </div>
+            """, unsafe_allow_html=True)
+
         st.markdown('</div>', unsafe_allow_html=True)
 
-        if top_label in reference_images:
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown('<div class="card-title">Nearest Reference Image</div>', unsafe_allow_html=True)
-            ref_img=Image.open(reference_images[top_label])
-            st.image(ref_img, use_column_width=True)
-            st.markdown(f'<div class="similar-caption">Reference: {top_label.replace("_", " ")}</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    elif not uploaded_file:
-        st.markdown('<div class="card" style="text-align:center; color:#475569; padding:4rem 1rem; margin-top:1rem;">Results will appear here after classification</div>', unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="idle-box" style="margin-top:0;">
+            <div class="idle-text">Awaiting sample input</div>
+            <div style="margin-top:0.5rem; font-family:'Space Mono',monospace; font-size:0.55rem; color:#0f1a1a; letter-spacing:0.15em;">Upload an image and run classification</div>
+        </div>
+        """, unsafe_allow_html=True)
