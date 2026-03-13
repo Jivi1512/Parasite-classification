@@ -47,31 +47,31 @@ def build_alexnet(num_classes):
     ])
     return model
 
-def extract_weights_from_keras(keras_path):
-    with zipfile.ZipFile(keras_path, 'r') as z:
-        names=z.namelist()
-        weight_files=[n for n in names if n.endswith('.weights.h5') or n=='model.weights.h5' or 'weights' in n.lower()]
-        tmpdir=tempfile.mkdtemp()
-        z.extractall(tmpdir)
-    return tmpdir, names
-
 @st.cache_resource
 def load_alexnet():
     model=build_alexnet(NUM_CLASSES)
     model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-    try:
-        tmpdir, names=extract_weights_from_keras(MODEL_PATH)
-        weight_path=None
-        for name in names:
-            if 'weight' in name.lower() and name.endswith('.h5'):
-                weight_path=os.path.join(tmpdir, name)
+    dummy=np.zeros((1, 224, 224, 3))
+    model.predict(dummy, verbose=0)
+    tmpdir=tempfile.mkdtemp()
+    with zipfile.ZipFile(MODEL_PATH, 'r') as z:
+        z.extractall(tmpdir)
+        all_files=z.namelist()
+    st.write("Files inside .keras ZIP:", all_files)
+    weight_path=None
+    for f in all_files:
+        full=os.path.join(tmpdir, f)
+        if os.path.isfile(full) and f.endswith('.h5'):
+            weight_path=full
+            break
+    if weight_path is None:
+        for f in all_files:
+            full=os.path.join(tmpdir, f)
+            if os.path.isfile(full) and 'weight' in f.lower():
+                weight_path=full
                 break
-        if weight_path and os.path.exists(weight_path):
-            model.load_weights(weight_path)
-        else:
-            model.load_weights(MODEL_PATH)
-    except Exception:
-        model.load_weights(MODEL_PATH)
+    st.write("Weight file found:", weight_path)
+    model.load_weights(weight_path)
     return model
 
 @st.cache_data
