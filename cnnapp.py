@@ -9,6 +9,7 @@ import os
 import glob
 import zipfile
 import tempfile
+import h5py
 
 MODEL_PATH="alexnet_best.keras"
 NUM_CLASSES=10
@@ -47,6 +48,43 @@ def build_alexnet(num_classes):
     ])
     return model
 
+def collect_h5_weights(h5_group, prefix=""):
+    weights={}
+    for key in h5_group.keys():
+        item=h5_group[key]
+        full_key=f"{prefix}/{key}" if prefix else key
+        if isinstance(item, h5py.Dataset):
+            weights[full_key]=np.array(item)
+        else:
+            weights.update(collect_h5_weights(item, full_key))
+    return weights
+
+def load_weights_from_keras3(model, weight_path):
+    with h5py.File(weight_path, 'r') as f:
+        all_weights=collect_h5_weights(f)
+    weight_values=[np.array(v) for v in all_weights.values()]
+    model_weights=model.weights
+    if len(weight_values)==len(model_weights):
+        for mw, wv in zip(model_weights, weight_values):
+            mw.assign(wv)
+    else:
+        trainable=[w for w in all_weights.values()]
+        idx=0
+        for layer in model.layers:
+            layer_weights=layer.weights
+            if not layer_weights:
+                continue
+            new_vals=[]
+            for w in layer_weights:
+                if idx < len(trainable):
+                    new_vals.append(np.array(list(all_weights.values())[idx]))
+                    idx+=1
+            if new_vals:
+                try:
+                    layer.set_weights(new_vals)
+                except Exception:
+                    pass
+
 @st.cache_resource
 def load_alexnet():
     model=build_alexnet(NUM_CLASSES)
@@ -56,22 +94,8 @@ def load_alexnet():
     tmpdir=tempfile.mkdtemp()
     with zipfile.ZipFile(MODEL_PATH, 'r') as z:
         z.extractall(tmpdir)
-        all_files=z.namelist()
-    st.write("Files inside .keras ZIP:", all_files)
-    weight_path=None
-    for f in all_files:
-        full=os.path.join(tmpdir, f)
-        if os.path.isfile(full) and f.endswith('.h5'):
-            weight_path=full
-            break
-    if weight_path is None:
-        for f in all_files:
-            full=os.path.join(tmpdir, f)
-            if os.path.isfile(full) and 'weight' in f.lower():
-                weight_path=full
-                break
-    st.write("Weight file found:", weight_path)
-    model.load_weights(weight_path)
+    weight_path=os.path.join(tmpdir, "model.weights.h5")
+    load_weights_from_keras3(model, weight_path)
     return model
 
 @st.cache_data
