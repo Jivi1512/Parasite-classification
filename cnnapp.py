@@ -115,7 +115,7 @@ def preprocess(image):
     arr=np.expand_dims(arr, axis=0)
     return arr
 
-st.set_page_config(page_title="ParaScan", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Microorganism Identification", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
@@ -411,7 +411,7 @@ st.markdown("""
 st.markdown("""
 <div class="header-wrap">
     <div class="header-tag">Microscopy Diagnostics System v1.0</div>
-    <div class="header-title">ParaScan</div>
+    <div class="header-title">Microorganism Identification</div>
     <div class="header-sub">AlexNet Neural Classifier &nbsp;|&nbsp; 10 Parasite Classes</div>
 </div>
 <hr class="divider-line">
@@ -498,5 +498,6 @@ with col_right:
             <div style="margin-top:0.5rem; font-family:'Space Mono',monospace; font-size:0.55rem; color:#0f1a1a; letter-spacing:0.15em;">Upload an image and run classification</div>
         </div>
         """, unsafe_allow_html=True)
+
 
 
