@@ -2,16 +2,16 @@ import streamlit as st
 import numpy as np
 from PIL import Image
 import tensorflow as tf
-from tensorflow.keras.models import load_model
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 from tensorflow.keras.preprocessing.image import img_to_array
 import os
 import glob
 import zipfile
-import json
-import shutil
+import tempfile
 
 MODEL_PATH="alexnet_best.keras"
-PATCHED_PATH="alexnet_model_patched.keras"
+NUM_CLASSES=10
 
 CLASS_NAMES=[
     "Babesia_1173", "Leishmania_2701", "Leukocyte_1000X_461",
@@ -23,45 +23,55 @@ CLASS_NAMES=[
 IMG_SIZE=(224, 224)
 DATASET_PATH="Parasite Dataset"
 
-def fix_batch_shape(obj):
-    if isinstance(obj, dict):
-        if "batch_shape" in obj:
-            obj["batch_input_shape"]=obj.pop("batch_shape")
-        return {k: fix_batch_shape(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [fix_batch_shape(i) for i in obj]
-    return obj
+def build_alexnet(num_classes):
+    model=Sequential([
+        Conv2D(96, (11,11), strides=(4,4), activation='relu', input_shape=(224,224,3)),
+        BatchNormalization(),
+        MaxPooling2D((3,3), strides=(2,2)),
+        Conv2D(256, (5,5), padding='same', activation='relu'),
+        BatchNormalization(),
+        MaxPooling2D((3,3), strides=(2,2)),
+        Conv2D(384, (3,3), padding='same', activation='relu'),
+        BatchNormalization(),
+        Conv2D(384, (3,3), padding='same', activation='relu'),
+        BatchNormalization(),
+        Conv2D(256, (3,3), padding='same', activation='relu'),
+        BatchNormalization(),
+        MaxPooling2D((3,3), strides=(2,2)),
+        Flatten(),
+        Dense(4096, activation='relu'),
+        Dropout(0.5),
+        Dense(4096, activation='relu'),
+        Dropout(0.5),
+        Dense(num_classes, activation='softmax')
+    ])
+    return model
 
-def patch_keras_file(src, dst):
-    if os.path.exists(dst):
-        return
-    shutil.copy2(src, dst)
-    with zipfile.ZipFile(src, 'r') as zin:
-        names=zin.namelist()
-        contents={}
-        for name in names:
-            contents[name]=zin.read(name)
-    config_key=None
-    for name in names:
-        if name.endswith("config.json"):
-            config_key=name
-            break
-    if config_key is None:
-        return
-    config_data=json.loads(contents[config_key].decode("utf-8"))
-    config_data=fix_batch_shape(config_data)
-    patched_bytes=json.dumps(config_data).encode("utf-8")
-    with zipfile.ZipFile(dst, 'w', zipfile.ZIP_DEFLATED) as zout:
-        for name in names:
-            if name==config_key:
-                zout.writestr(name, patched_bytes)
-            else:
-                zout.writestr(name, contents[name])
+def extract_weights_from_keras(keras_path):
+    with zipfile.ZipFile(keras_path, 'r') as z:
+        names=z.namelist()
+        weight_files=[n for n in names if n.endswith('.weights.h5') or n=='model.weights.h5' or 'weights' in n.lower()]
+        tmpdir=tempfile.mkdtemp()
+        z.extractall(tmpdir)
+    return tmpdir, names
 
 @st.cache_resource
 def load_alexnet():
-    patch_keras_file(MODEL_PATH, PATCHED_PATH)
-    model=load_model(PATCHED_PATH)
+    model=build_alexnet(NUM_CLASSES)
+    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    try:
+        tmpdir, names=extract_weights_from_keras(MODEL_PATH)
+        weight_path=None
+        for name in names:
+            if 'weight' in name.lower() and name.endswith('.h5'):
+                weight_path=os.path.join(tmpdir, name)
+                break
+        if weight_path and os.path.exists(weight_path):
+            model.load_weights(weight_path)
+        else:
+            model.load_weights(MODEL_PATH)
+    except Exception:
+        model.load_weights(MODEL_PATH)
     return model
 
 @st.cache_data
@@ -161,4 +171,3 @@ with col_results:
 
     elif not uploaded_file:
         st.markdown('<div class="card" style="text-align:center; color:#475569; padding:4rem 1rem; margin-top:1rem;">Results will appear here after classification</div>', unsafe_allow_html=True)
-
